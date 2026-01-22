@@ -1,0 +1,75 @@
+# GitLab CI/CD configuration for Docker Documentation Mirror
+# This pipeline serves the mirrored Docker documentation on GitLab Pages
+
+stages:
+  - build
+  - deploy
+
+variables:
+  # Source URL for Docker documentation
+  DOCKER_DOCS_URL: "https://docs.docker.com/"
+  # User agent for wget requests
+  USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+# Cache the downloaded files between pipeline runs
+cache:
+  key: docker-docs-mirror
+  paths:
+    - public/
+
+# Optional: Update the mirror (uncomment to enable periodic updates)
+# This job downloads/updates the Docker documentation mirror
+# update_mirror:
+#   stage: build
+#   image: alpine:latest
+#   before_script:
+#     - apk add --no-cache wget
+#   script:
+#     - mkdir -p public
+#     - cd public
+#     - |
+#       wget \
+#         --mirror \
+#         --convert-links \
+#         --adjust-extension \
+#         --page-requisites \
+#         --no-parent \
+#         --no-host-directories \
+#         --directory-prefix=. \
+#         -e robots=off \
+#         --wait=0.5 \
+#         --random-wait \
+#         --limit-rate=2M \
+#         --user-agent="$USER_AGENT" \
+#         --reject="*.exe,*.msi,*.dmg,*.zip,*.tar.gz,*.deb,*.rpm" \
+#         --timeout=30 \
+#         --tries=3 \
+#         --continue \
+#         "$DOCKER_DOCS_URL" || true
+#     - echo "Mirror update complete"
+#     - find . -type f | wc -l
+#     - du -sh .
+#   artifacts:
+#     paths:
+#       - public/
+#     expire_in: 1 week
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "schedule"
+#     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+#       when: manual
+
+# Deploy to GitLab Pages
+pages:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - echo "Deploying Docker Documentation Mirror to GitLab Pages"
+    - echo "Total files in public directory:"
+    - find public -type f | wc -l
+    - echo "Total size:"
+    - du -sh public/
+  artifacts:
+    paths:
+      - public/
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
